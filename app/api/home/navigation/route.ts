@@ -1,45 +1,23 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
+import { fetchJsonFromRepo } from "@/app/lib/github";
 
-export const runtime = 'edge'
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-const OWNER  = process.env.GITHUB_OWNER!
-const REPO   = process.env.GITHUB_REPO!
-const BRANCH = process.env.GITHUB_BRANCH || 'main'
-
-async function fetchFromDataRepo(path: string) {
-  const url = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${path}`
-  const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) throw new Error(`Fetch ${path} failed: ${res.status}`)
-  return res.json()
-}
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    // 1) 读 site.json 拿默认导航 ID
-    const site = await fetchFromDataRepo('site.json')
-    const defaultId = site?.defaultNavigationId
+    const site = await fetchJsonFromRepo("site.json", { tag: "site", revalidate: 3600 });
+    const all  = await fetchJsonFromRepo("navigation.json", { tag: "navigation", revalidate: 3600 });
 
-    // 2) 读导航数据
-    const all = await fetchFromDataRepo('navigation.json')
-    const arr = Array.isArray(all?.navigationItems) ? all.navigationItems : []
+    const defaultId = String(site?.defaultNavigationId ?? "");
+    const items = Array.isArray(all?.navigationItems) ? all.navigationItems : [];
+    const picked = defaultId ? items.find((g: any) => String(g?.id) === defaultId) : items[0];
 
-    // 3) 只返回默认导航（找不到就回退第一个）
-    const picked = defaultId
-      ? arr.find((g: any) => String(g?.id) === String(defaultId))
-      : arr[0]
-
-    const payload = { navigationItems: picked ? [picked] : [] }
-
-    return NextResponse.json(payload, {
-      headers: { 'Content-Type': 'application/json' }
-    })
-  } catch (error) {
-    console.error('Error in navigation API:', error)
-    return NextResponse.json(
-      { error: '获取导航数据失败' },
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+    return NextResponse.json({ navigationItems: picked ? [picked] : [] }, {
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("Error in /api/home/navigation:", e);
+    return NextResponse.json({ error: "获取导航数据失败" }, { status: 500 });
   }
 }
