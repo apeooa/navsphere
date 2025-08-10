@@ -4,9 +4,13 @@ import { getFileContent } from '@/lib/github'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// 把 '/assets/...' 或 '/public/assets/...' 改写为 '/api/assets/public/assets/...'
+// 仅当像是本地图片路径时才改写到 /api/assets/...
+const isLocalAssetPath = (p: string) =>
+  /^\/(public\/)?assets\/.+\.(png|jpe?g|gif|webp|svg|ico)$/i.test(p)
+
 function toAssetProxy(p?: string) {
-  if (!p || /^https?:\/\//i.test(p)) return p
+  if (!p || /^https?:\/\//i.test(p) || p.startsWith('data:')) return p
+  if (!isLocalAssetPath(p)) return p
   const clean = p.replace(/^\/+/, '')
   const repoPath = clean.startsWith('assets/') ? `public/${clean}` : clean
   return `/api/assets/${repoPath}`
@@ -14,8 +18,8 @@ function toAssetProxy(p?: string) {
 
 export async function GET() {
   try {
-    // 这里不传第二个参数，兼容你当前的 getFileContent(path: string) 签名
-    const site: any = await getFileContent('site.json')
+    // 固定读取 navsphere/content/site.json
+    const site: any = await getFileContent('navsphere/content/site.json')
 
     if (site?.appearance) {
       site.appearance.logo = toAssetProxy(site.appearance.logo)
