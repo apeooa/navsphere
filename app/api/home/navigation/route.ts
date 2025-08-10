@@ -7,12 +7,10 @@ const owner = process.env.GITHUB_OWNER!
 const repo = process.env.GITHUB_REPO!
 const branch = process.env.GITHUB_BRANCH || 'main'
 
-function withRawGitHubUrl(path: string) {
-  if (!path) return path
-  if (path.startsWith('/assets/')) {
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}${path}`
-  }
-  return path
+function toAssetProxy(p?: string) {
+  if (!p || /^https?:\/\//i.test(p)) return p
+  const clean = p.replace(/^\/+/, '') // 去掉开头的 '/'
+  return `/api/assets/${clean}`
 }
 
 // 放在函数外：避免“strict mode 下块级 function 声明”报错
