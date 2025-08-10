@@ -1,32 +1,30 @@
 import { NextResponse } from 'next/server'
 import { getFileContent } from '@/lib/github'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-const owner = process.env.GITHUB_OWNER!
-const repo = process.env.GITHUB_REPO!
-const branch = process.env.GITHUB_BRANCH || 'main'
-
+// 把 '/assets/...' 或 '/public/assets/...' 改写为 '/api/assets/public/assets/...'
 function toAssetProxy(p?: string) {
   if (!p || /^https?:\/\//i.test(p)) return p
-  const clean = p.replace(/^\/+/, '') // 去掉开头的 '/'
-  return `/api/assets/${clean}`
+  const clean = p.replace(/^\/+/, '')
+  const repoPath = clean.startsWith('assets/') ? `public/${clean}` : clean
+  return `/api/assets/${repoPath}`
 }
 
 export async function GET() {
   try {
-    const siteData: any = await getFileContent('site.json')
+    // 这里不传第二个参数，兼容你当前的 getFileContent(path: string) 签名
+    const site: any = await getFileContent('site.json')
 
-    if (siteData?.appearance?.logo) {
-      siteData.appearance.logo = withRawGitHubUrl(siteData.appearance.logo)
-    }
-    if (siteData?.appearance?.favicon) {
-      siteData.appearance.favicon = withRawGitHubUrl(siteData.appearance.favicon)
+    if (site?.appearance) {
+      site.appearance.logo = toAssetProxy(site.appearance.logo)
+      site.appearance.favicon = toAssetProxy(site.appearance.favicon)
     }
 
-    return NextResponse.json(siteData)
+    return NextResponse.json(site, { headers: { 'Content-Type': 'application/json' } })
   } catch (error) {
-    console.error('Error in site API:', error)
+    console.error('Error in /api/home/site:', error)
     return NextResponse.json({ error: '获取站点数据失败' }, { status: 500 })
   }
 }
