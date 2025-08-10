@@ -1,20 +1,49 @@
 import { NextResponse } from 'next/server'
 import { getFileContent } from '@/lib/github'
 
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+export const runtime = 'edge'
+
+const owner = process.env.GITHUB_OWNER!
+const repo = process.env.GITHUB_REPO!
+const branch = process.env.GITHUB_BRANCH || 'main'
+
+function withRawGitHubUrl(path: string) {
+  if (!path) return path
+  if (path.startsWith('/assets/')) {
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}${path}`
+  }
+  return path
+}
 
 export async function GET() {
   try {
-    const site = await getFileContent('site.json', { tag: 'site', revalidate: 3600 })
-    const all  = await getFileContent('navigation.json', { tag: 'navigation', revalidate: 3600 })
+    let navigationData = await getFileContent('navigation.json')
 
-    const defaultId = String(site?.defaultNavigationId ?? '')
-    const items = Array.isArray(all?.navigationItems) ? all.navigationItems : []
-    const picked = defaultId ? items.find((g: any) => String(g?.id) === defaultId) : items[0]
+    // 递归替换所有 items 里的 icon 路径
+    function replaceIcons(items: any[]) {
+      return items.map(item => {
+        if (item.icon) {
+          item.icon = withRawGitHubUrl(item.icon)
+        }
+        if (item.items) {
+          item.items = replaceIcons(item.items)
+        }
+        if (item.subCategories) {
+          item.subCategories = replaceIcons(item.subCategories)
+        }
+        return item
+      })
+    }
 
-    return NextResponse.json({ navigationItems: picked ? [picked] : [] }, {
-      headers: { 'Content-Type': 'application/json' }
+    if (navigationData?.navigationItems) {
+      navigationData.navigationItems = replaceIcons(navigationData.navigationItems)
+    }
+
+    return NextResponse.json(navigationData, {
+      headers: {
+        'Cache-Control': 'no-store', // 避免缓存
+        'Content-Type': 'application/json'
+      }
     })
   } catch (error) {
     console.error('Error in navigation API:', error)
