@@ -25,21 +25,41 @@ const transformNode = (node: any): any => {
   return node
 }
 
-export async function GET() {
+async function readSite() {
+  return await getFileContent('navsphere/content/site.json')
+}
+
+async function readNavigation() {
+  const data = await getFileContent('navsphere/content/navigation.json')
+  return Array.isArray(data?.navigationItems) ? data.navigationItems : []
+}
+
+export async function GET(req: Request) {
   try {
-    // 固定读取 navsphere/content 下的两个文件
-    const site: any = await getFileContent('navsphere/content/site.json')
-    const all:  any = await getFileContent('navsphere/content/navigation.json')
+    const url = new URL(req.url)
+    const wantAll = url.searchParams.get('all')
+    const wantId = url.searchParams.get('id')
 
-    const defaultId = String(site?.defaultNavigationId ?? '')
-    const list = Array.isArray(all?.navigationItems) ? all.navigationItems : []
+    const [site, list] = await Promise.all([readSite(), readNavigation()])
 
-    const picked = defaultId
-      ? list.find((g: any) => String(g?.id) === defaultId)
-      : list[0]
+    // all=1 → 返回所有分组
+    if (wantAll === '1' || wantAll === 'true') {
+      const allGroups = list.map(transformNode)
+      return NextResponse.json({ navigationItems: allGroups }, { headers: { 'Content-Type': 'application/json' } })
+    }
+
+    // id=xxx → 返回指定分组
+    let picked = wantId
+      ? list.find((g: any) => String(g?.id) === String(wantId))
+      : null
+
+    // 默认：返回 defaultNavigationId 指定分组；没有就第一个
+    if (!picked) {
+      const defaultId = String(site?.defaultNavigationId ?? '')
+      picked = defaultId ? list.find((g: any) => String(g?.id) === defaultId) : list[0]
+    }
 
     const payload = { navigationItems: picked ? [transformNode(picked)] : [] }
-
     return NextResponse.json(payload, { headers: { 'Content-Type': 'application/json' } })
   } catch (error) {
     console.error('Error in /api/home/navigation:', error)
