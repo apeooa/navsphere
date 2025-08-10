@@ -2,6 +2,7 @@
 
 export const runtime = 'edge'
 
+import ItemsSortableList from '@/components/admin/ItemsSortableList'
 import SmartIcon from '@/components/smart-icon'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -237,41 +238,47 @@ export default function ItemsPage() {
   }
 
   const onDragEnd = async (result: DropResult) => {
-    if (!result.destination) return
-
-    const items = Array.from(navigation?.items || [])
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
-
+    const { source, destination } = result
+    if (!destination || !navigation?.items) return
+  
+    // 当前“可见列表”（受搜索/筛选影响）
+    const visible = filteredItems
+    if (!visible.length) return
+  
+    // 用 id 计算移动
+    const srcId = visible[source.index]?.id
+    const dstId = visible[destination.index]?.id
+    if (!srcId || !dstId || srcId === dstId) return
+  
+    // 在完整数组中的原索引
+    const items = Array.from(navigation.items)
+    const srcIdx = items.findIndex(i => i.id === srcId)
+    let dstIdx  = items.findIndex(i => i.id === dstId)
+    if (srcIdx === -1 || dstIdx === -1) return
+  
+    // 从原数组挪位（注意先删再插的索引修正）
+    const [moved] = items.splice(srcIdx, 1)
+    if (srcIdx < dstIdx) dstIdx -= 1
+    items.splice(dstIdx, 0, moved)
+  
     try {
       const navigationId = params?.id
-      if (!navigationId) {
-        throw new Error('Navigation ID is missing')
-      }
+      if (!navigationId) throw new Error('Navigation ID is missing')
+  
       const response = await fetch(`/api/navigation/${navigationId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...navigation,
-          items
-        })
+        body: JSON.stringify({ ...navigation, items }),
       })
-
       if (!response.ok) throw new Error('Failed to save order')
-
-      await fetchNavigation() // Refresh data
-      toast({
-        title: "成功",
-        description: "项目顺序已更新"
-      })
+  
+      await fetchNavigation()
+      toast({ title: '成功', description: '项目顺序已更新' })
     } catch (error) {
-      toast({
-        title: "错误",
-        description: "保存顺序失败",
-        variant: "destructive"
-      })
+      toast({ title: '错误', description: '保存顺序失败', variant: 'destructive' })
     }
   }
+
 
   const moveToTop = async (index: number) => {
     if (index > 0) {
