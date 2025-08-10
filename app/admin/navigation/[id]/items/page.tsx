@@ -465,7 +465,7 @@ export default function ItemsPage() {
                         <div className="flex items-center gap-3">
                           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
                             {item.icon ? (
-                              <img src={item.icon} alt={item.title} className="w-4 h-4 object-contain" />
+                              <SmartIcon icon={item.icon} size={16} className="w-4 h-4 object-contain" />
                             ) : (
                               <Icons.link className="h-4 w-4 text-primary" />
                             )}
