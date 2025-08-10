@@ -43,17 +43,14 @@ export async function GET(request: Request) {
         }
       }
     }
+    return NextResponse.json({
+      totalCategories: top + second,
+      parentCategories: top,     // ← 改名
+      subCategories: second,     // ← 改名
+      totalSites: sites,
+      updatedAt: new Date().toISOString(),
+    }, { headers: { 'Cache-Control': 'no-store' } })
 
-    return NextResponse.json(
-      {
-        totalCategories: top + second,      // 分类总数（一级+二级）
-        topLevelCategories: top,            // 一级分类数量
-        secondLevelCategories: second,      // 二级分类数量
-        totalSites: sites,                  // 站点总数（只统计 enabled!=false）
-        updatedAt: new Date().toISOString()
-      },
-      { headers: { 'Cache-Control': 'no-store' } }
-    )
   } catch (err: any) {
     return NextResponse.json(
       { error: 'stats_error', message: err?.message ?? String(err) },
