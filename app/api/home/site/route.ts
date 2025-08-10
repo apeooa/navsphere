@@ -17,7 +17,7 @@ function withRawGitHubUrl(path: string) {
 
 export async function GET() {
   try {
-    let siteData = await getFileContent('site.json')
+    const siteData: any = await getFileContent('site.json')
 
     if (siteData?.appearance?.logo) {
       siteData.appearance.logo = withRawGitHubUrl(siteData.appearance.logo)
