@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server'
-export const runtime = 'nodejs'
-
+export const runtime = 'edge'
 export async function POST() {
-  const res = NextResponse.json({ ok: true })
-  res.cookies.set('ns_access', '', { path: '/', maxAge: 0 })
-  return res
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Set-Cookie': 'ns_access=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax',
+    },
+  })
 }
