@@ -48,16 +48,6 @@ export async function middleware(req: NextRequest) {
   }
 
   // 2) /admin 需要 NextAuth 登录
-  if (pathname.startsWith('/admin')) {
-    const session = await auth()
-    if (!session?.user) {
-      const url = req.nextUrl.clone()
-      url.pathname = '/auth/signin'
-      url.search = ''
-      url.searchParams.set('callbackUrl', req.url)
-      return NextResponse.redirect(url)
-    }
-  }
   // 改成同时拦 /api/admin
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     const session = await auth()
