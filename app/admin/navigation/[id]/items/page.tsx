@@ -2,6 +2,7 @@
 
 export const runtime = 'edge'
 
+import SmartIcon from '@/components/smart-icon'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from "@/registry/new-york/ui/button"
