@@ -1,31 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
+import { fetchJsonFromRepo } from "@/app/lib/github";
 
-export const runtime = 'edge'
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-const OWNER  = process.env.GITHUB_OWNER!
-const REPO   = process.env.GITHUB_REPO!
-const BRANCH = process.env.GITHUB_BRANCH || 'main'
-
-async function fetchFromDataRepo(path: string) {
-  const url = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${path}`
-  const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) throw new Error(`Fetch ${path} failed: ${res.status}`)
-  return res.json()
-}
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const siteData = await fetchFromDataRepo('site.json')
-    return NextResponse.json(siteData, {
-      headers: { 'Content-Type': 'application/json' }
-    })
-  } catch (error) {
-    console.error('Error in site API:', error)
-    return NextResponse.json(
-      { error: '获取站点数据失败' },
-      { status: 500 }
-    )
+    const site = await fetchJsonFromRepo("site.json", { tag: "site", revalidate: 3600 });
+    return NextResponse.json(site, { headers: { "Content-Type": "application/json" } });
+  } catch (e) {
+    console.error("Error in /api/home/site:", e);
+    return NextResponse.json({ error: "获取站点数据失败" }, { status: 500 });
   }
 }
