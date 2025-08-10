@@ -42,25 +42,37 @@ export async function GET(req: Request) {
 
     const [site, list] = await Promise.all([readSite(), readNavigation()])
 
-    // all=1 → 返回所有分组
+    // 1) all=1 → 强制返回全部
     if (wantAll === '1' || wantAll === 'true') {
-      const allGroups = list.map(transformNode)
-      return NextResponse.json({ navigationItems: allGroups }, { headers: { 'Content-Type': 'application/json' } })
+      return NextResponse.json(
+        { navigationItems: list.map(transformNode) },
+        { headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
-    // id=xxx → 返回指定分组
+    // 2) 配置为 all / * → 默认返回全部
+    const cfg = String(site?.defaultNavigationId ?? '').toLowerCase()
+    if (cfg === 'all' || cfg === '*') {
+      return NextResponse.json(
+        { navigationItems: list.map(transformNode) },
+        { headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 3) id=xxx → 返回指定分组；否则返回默认分组；再否则返回第一个
     let picked = wantId
       ? list.find((g: any) => String(g?.id) === String(wantId))
       : null
 
-    // 默认：返回 defaultNavigationId 指定分组；没有就第一个
     if (!picked) {
       const defaultId = String(site?.defaultNavigationId ?? '')
       picked = defaultId ? list.find((g: any) => String(g?.id) === defaultId) : list[0]
     }
 
-    const payload = { navigationItems: picked ? [transformNode(picked)] : [] }
-    return NextResponse.json(payload, { headers: { 'Content-Type': 'application/json' } })
+    return NextResponse.json(
+      { navigationItems: picked ? [transformNode(picked)] : [] },
+      { headers: { 'Content-Type': 'application/json' } }
+    )
   } catch (error) {
     console.error('Error in /api/home/navigation:', error)
     return NextResponse.json({ error: '获取导航数据失败' }, { status: 500 })
