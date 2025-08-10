@@ -1,9 +1,9 @@
+// app/api/access/logout/route.ts
+import { NextResponse } from 'next/server'
 export const runtime = 'edge'
+
 export async function POST() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Set-Cookie': 'ns_access=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax',
-    },
-  })
+  const res = NextResponse.redirect(new URL('/access', process.env.NEXT_PUBLIC_API_URL))
+  res.cookies.set('ns_access', '', { path: '/', maxAge: 0, httpOnly: true, secure: true, sameSite: 'lax' })
+  return res
 }
