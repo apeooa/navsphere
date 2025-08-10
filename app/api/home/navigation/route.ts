@@ -15,35 +15,34 @@ function withRawGitHubUrl(path: string) {
   return path
 }
 
+// 放在函数外：避免“strict mode 下块级 function 声明”报错
+const transformNode = (node: any): any => {
+  if (!node || typeof node !== 'object') return node
+
+  if (node.icon) node.icon = withRawGitHubUrl(node.icon)
+
+  if (Array.isArray(node.items)) {
+    node.items = node.items.map(transformNode)
+  }
+  if (Array.isArray(node.subCategories)) {
+    node.subCategories = node.subCategories.map(transformNode)
+  }
+  return node
+}
+
 export async function GET() {
   try {
-    let navigationData = await getFileContent('navigation.json')
+    const data: any = await getFileContent('navigation.json')
 
-    // 递归替换所有 items 里的 icon 路径
-    function replaceIcons(items: any[]) {
-      return items.map(item => {
-        if (item.icon) {
-          item.icon = withRawGitHubUrl(item.icon)
-        }
-        if (item.items) {
-          item.items = replaceIcons(item.items)
-        }
-        if (item.subCategories) {
-          item.subCategories = replaceIcons(item.subCategories)
-        }
-        return item
-      })
+    if (Array.isArray(data?.navigationItems)) {
+      data.navigationItems = data.navigationItems.map(transformNode)
     }
 
-    if (navigationData?.navigationItems) {
-      navigationData.navigationItems = replaceIcons(navigationData.navigationItems)
-    }
-
-    return NextResponse.json(navigationData, {
+    return NextResponse.json(data, {
       headers: {
-        'Cache-Control': 'no-store', // 避免缓存
-        'Content-Type': 'application/json'
-      }
+        'Cache-Control': 'no-store',
+        'Content-Type': 'application/json',
+      },
     })
   } catch (error) {
     console.error('Error in navigation API:', error)
